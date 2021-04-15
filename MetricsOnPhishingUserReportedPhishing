@@ -1,0 +1,235 @@
+<form theme="light">
+  <label>Avista Phishing Emails</label>
+  <description>Contains metrics on Phish reports per day, Top tactics like Dropbox/Docusign etc.</description>
+  <fieldset submitButton="false" autoRun="False">
+    <input type="time" token="tkn_time" searchWhenChanged="true">
+      <label>Time Window</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="tkn_email">
+      <label>Email Sender</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Total Emails Reported</title>
+      <single>
+        <search>
+          <query>(index=email OR tag=email)  recipient_address=AutoReply_Phishing@corp.com OR recipient_address=phishing@corp.com 
+ | stats count(sender_address)</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051", "0x0877a6", "0xf8be34", "0xf1813f", "0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Timechart of When Emails are Reported</title>
+      <chart>
+        <search>
+          <query>(index=email OR tag=email)  recipient_address=AutoReply_Phishing@corp.com OR recipient_address=phishing@corp.com 
+ | timechart count(sender_address)</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top Phishing Email Reporters</title>
+      <table>
+        <search>
+          <query>(index=email OR tag=email) recipient_address=AutoReply_Phishing@corp.com OR recipient_address=phishing@corp.com   | top sender_address</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="percent">
+          <colorPalette type="minMidMax" maxColor="#006D9C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <search>
+          <query>(index=email OR tag=email) recipient_address=AutoReply_Phishing@corp.com OR recipient_address=phishing@corp.com 
+(sender_address=$tkn_email$) 
+| table sender_address, recipient_address,total_bytes message_subject 
+|  dedup message_subject</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">6</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="message_subject">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="sender_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>911 Call Alerts. Emails from David C are follow ups.</title>
+      <table>
+        <search>
+          <query>(index=email OR tag=email)  *911*  sender_address=ERS@NY.911.intrado.com OR  sender_address=david.carroll@avistacorp.com
+ | stats count by sender_address message_subject</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="message_subject">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Physical Security Report Notifications</title>
+      <table>
+        <search>
+          <query>(index=email OR tag=email)  sender_address="no-reply-vision@securitasinc.com"
+| table sender_address message_subject _time 
+| dedup message_subject</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="message_subject">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>DocuSign Phish</title>
+      <table>
+        <search>
+          <query>(index=email OR tag=email) recipient_address=AutoReply_Phishing@corp.com OR recipient_address=phishing@corp.com  *docusign*
+| stats values(recipient_address) by sender_address message_subject 
+| dedup message_subject</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="message_subject">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Possible Dropbox Phishing - more than 1 recipient not found</title>
+      <table>
+        <search>
+          <query>(index=email OR tag=email) dropbox.com AND recipient_status="'550 5.1.1 RESOLVER.ADR.RecipNotFound; not found'" | stats count by sender_address message_subject | where count &gt; 1</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
