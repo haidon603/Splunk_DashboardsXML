@@ -1,0 +1,429 @@
+<form theme="dark">
+  <label>Employee/Contractor Activity</label>
+  <description>We are frequently asked to provide evidence of employee/contractor work activity. EOI (emails, workstation, VPN, Citrix, Avigilon, Powerbrokers, Web (top apps, blocked categories, bytes). 719148</description>
+  <search id="proxy_traffic">
+    <query>index=proxy	 sourcetype="proxy" | fields _time,  app dhost action user body category  url  bytes_to_server bytes_to_client bytes time_total </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+    <sampleRatio>1</sampleRatio>
+  </search>
+  <fieldset submitButton="True" autoRun="False">
+    <input type="text" token="user_token">
+      <label>Username</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="tkn_email">
+      <label>Email Address</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="FN_token" searchWhenChanged="true">
+      <label>First Name</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="LN_token">
+      <label>Last Name</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="time" token="tkn_time">
+      <label>Time Window</label>
+      <default>
+        <earliest>-6h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Blocked Traffic due to Suspicious Category</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search action=blocked   user=$user_token$
+category= "Adult Topics" OR
+category= "Adware" OR
+category= "Alcohol" OR
+category= "Anonymizers" OR
+category= "Browser Exploits" OR
+category= "Consumer Protection" OR
+category= "Dating/Personals" OR
+category= "Discrimination" OR
+category= "Extreme" OR
+category= "Gambling" OR
+category= "Gambling Related" OR
+category= "Game / Cartoon Violence" OR
+category= "Gruesome Content" OR
+category= "Historical Revisionism" OR
+category= "Illegal UK" OR
+category= "Incidental Nudity" OR
+category= "Keyloggers" OR
+category= "Malicious Downloads" OR
+category= "Malicious Sites" OR
+category= "Malicious Sites" OR
+category= "Nudity" OR
+category= "P2P / File Sharing" OR
+category= "Parked Domain" OR
+category= "Parked Domain" OR
+category= "Phishing" OR
+category= "Pornography" OR
+category= "Potential Criminal Activities" OR
+category= "Potential Hacking / Computer Crime" OR
+category= "Potential Illegal Software" OR
+category= "Profanity" OR
+category= "Provocative Attire" OR
+category= "PUPs" OR
+category= "PUPs (potentially unwanted programs)" OR
+category= "Residential IP Addresses" OR
+category= "School Cheating Info" OR
+category= "Sexual Materials" OR
+category= "Spam URLs" OR
+category= "Spyware / Adware / Keyloggers" OR
+category= "Violence"
+| stats count by dhost category</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="DISTINCT_DHOST">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Top Host by Count</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search user=$user_token$
+| top dhost</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="percent">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Top Host Visited by bandwidth</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>|search user=$user_token$
+| stats sum(eval(bytes / 1000000)) as "MB" by dhost
+| sort -MB</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="MB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Hosts by Duration</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>|search user=$user_token$
+| stats sum(time_total) AS session_time sum(bytes_to_server) as sent sum(bytes_to_client) as received sum(bytes) as total by dhost
+| eval browsing_time=tostring(session_time, "duration")
+| stats values(browsing_time) as browsing_time values(total) as total by dhost 
+| sort -browsing_time</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="percent">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="browsing_time">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="dhost">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Executable Download Attempts</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search  *.exe  AND user=$user_token$
+| stats sum(eval(bytes / 1000000)) as "MB" by body category url user
+| sort -MB</query>
+        </search>
+        <option name="count">2</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="body">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="MB">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Physical Security Card Scans</title>
+      <table>
+        <search>
+          <query>sourcetype="securityreader" EVENT.plasectrxFname=*$FN_token$* EVENT.plasectrxLname=*$LN_token$*
+| rename Sourcename as Location, Eventname as Event, EVENT.plasectrxFname as "First Name", EVENT.plasectrxLname as "Last Name"
+ | table  "First Name" "Last Name"  EVENT.plasectrxEventname EVENT.plasectrxPanelname _time
+ | sort _time</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="EVENT.plasectrxEventname">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="EVENT.plasectrxPanelname">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>RSA Events</title>
+      <table>
+        <search>
+          <query>index=RSA sourcetype=rsa:securid:runtime:syslog user=$user_token$ | fields _time, agent_ip, agent_name, argument1, authentication_category, action, vendor_action, vendor_event_type, src, dest, client_ip, object, object_category, result, status, user, user_first_name, user_last_name |  search user=* | eval fullname=user_first_name." ".user_last_name | convert ctime(_time) as time | stats values(time) values(result) values(fullname) values(agent_name) values(src) values(object) values(object_category) by user, action</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="values(result)">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>VPN Events</title>
+      <table>
+        <search>
+          <query>(sourcetype=asa vendor_definition="User Authentication") 
+user=$user_token$ |  rename event_name as "User Authentication", src as "src_ip", type as "Browser_type" | iplocation src_ip  
+| fields user, 	Browser_type src_ip Country, City, Region | table  	
+user Browser_type src_ip Country Region City</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="Country">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>ACS Events (Wireless)</title>
+      <table>
+        <search>
+          <query>index=wirelesslogs sourcetype=cisco:acs user=$user_token$  | fields _time host user UserName User-Name AD_User_Candidate_Identities FailureReason MESSAGE_TEXT MESSAGE_CLASS AuthenticationIdentityStore NAS_Identifier NAS_Port_Type SelectedAccessService Service_Type RadiusPacketType RequestLatency UseCase action dvc signature Calling_Station_ID DetailedInfo |   stats values(MESSAGE_TEXT) values(SelectedAccessService) values(Calling_Station_ID) by UserName</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="UserName">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Email Activity</title>
+      <table>
+        <search>
+          <query>(index=emailserver OR tag=email) $tkn_email$
+| table sender_address, recipient_address,total_bytes message_subject _time
+| sort -_time</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="sender_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="total_bytes">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Email Activity - Non Corporate Email (External Recipient)</title>
+      <table>
+        <search>
+          <query>(index=emailserver OR tag=email) $tkn_email$  recipient_address!=*@avistacorp.com   | top  sender_address recipient_address message_subject</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="sender_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Email Rules</title>
+      <table>
+        <title>directionality=Incoming</title>
+        <search>
+          <query>sourcetype="email:InboxRules" Mailbox=$tkn_email$
+| stats values(Name) by   Mailbox MoveToFolder</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="Mailbox">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Endpoint Detection Response Events</title>
+      <table>
+        <search>
+          <query>sourcetype=edr "metadata.eventType"=DetectionSummaryEvent (action="allowed" OR action="blocked") metadata.customerIDString=* user=$user_token$ | table _time user dest
+event.ParentImageFileName
+event.FileName
+event.Tactic
+event.CommandLine
+| rename dest as "Host"</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="event.Tactic">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="event.FileName">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Local Admin Events</title>
+      <table>
+        <search>
+          <query>sourcetype="PIM logs" $user_token$ | stats count by AssetName User Path Arguments | sort -count</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="User">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="AssetName">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
