@@ -1,0 +1,444 @@
+<form theme="dark">
+  <label>Proxy events of Interest 2</label>
+  <description>Blocked Dhost, Blocked executables,  Bytes by App, HTTP request clusters, UA by length, UA by quantity, Upload/downloaded data</description>
+  <search id="proxy_traffic">
+    <query>index=proxy $user_token$ | fields _time, ua mtd app dhost action bytes user body category  url </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+    <sampleRatio>1</sampleRatio>
+  </search>
+  <fieldset submitButton="True" autoRun="false">
+    <input type="text" token="user_token">
+      <label>Username</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="time" token="tkn_time" searchWhenChanged="true">
+      <label>Time Window</label>
+      <default>
+        <earliest>-6h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Traffic Action=Blocked</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search action=blocked 
+user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User 
+user!=Guest_WCCP_Unauthenticated_User user!=BYOD_WCCP_Unauthenticated_User
+dhost!=jelly.mdhv.io
+dhost!=cdn.ayc0zsm69431gfebd.xyz
+dhost!=cdn.czx5eyk0exbhwp43ya.biz
+dhost!=dev.visualwebsiteoptimizer.com
+
+category= "Adult Topics" OR
+category= "Adware" OR
+category= "Alcohol" OR
+category= "Anonymizers" OR
+category= "Browser Exploits" OR
+category= "Consumer Protection" OR
+category= "Dating/Personals" OR
+category= "Discrimination" OR
+category= "Extreme" OR
+category= "Gambling" OR
+category= "Gambling Related" OR
+category= "Game / Cartoon Violence" OR
+category= "Gruesome Content" OR
+category= "Historical Revisionism" OR
+category= "Illegal UK" OR
+category= "Incidental Nudity" OR
+category= "Keyloggers" OR
+category= "Malicious Downloads" OR
+category= "Malicious Sites" OR
+category= "Malicious Sites" OR
+category= "Nudity" OR
+category= "P2P / File Sharing" OR
+category= "Parked Domain" OR
+category= "Parked Domain" OR
+category= "Phishing" OR
+category= "Pornography" OR
+category= "Potential Criminal Activities" OR
+category= "Potential Hacking / Computer Crime" OR
+category= "Potential Illegal Software" OR
+category= "Profanity" OR
+category= "Provocative Attire" OR
+category= "PUPs" OR
+category= "PUPs (potentially unwanted programs)" OR
+category= "Residential IP Addresses" OR
+category= "School Cheating Info" OR
+category= "Sexual Materials" OR
+category= "Spam URLs" OR
+category= "Spyware / Adware / Keyloggers" OR
+category= "Violence"
+
+| stats values(dhost) AS dhost_List dc(dhost) AS DISTINCT_DHOST by user  
+|  sort - DISTINCT_DHOST</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="DISTINCT_DHOST">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>7 Day Traffic Action=Blocked TOP hits</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search action=blocked 
+user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User 
+user!=Guest_WCCP_Unauthenticated_User user!=BYOD_WCCP_Unauthenticated_User
+dhost!=jelly.mdhv.io
+dhost!=cdn.ayc0zsm69431gfebd.xyz
+dhost!=cdn.czx5eyk0exbhwp43ya.biz
+dhost!=dev.visualwebsiteoptimizer.com
+
+category=	"Adult Topics"	OR
+category= "Adware" OR
+category=	"Alcohol"	OR
+category=	"Anonymizers"	OR
+category=	"Browser Exploits"	OR
+category=	"Consumer Protection"	OR
+category=	"Dating/Personals"	OR
+category=	"Discrimination"	OR
+category=	"Extreme"	OR
+category=	"Gambling"	OR
+category=	"Gambling Related"	OR
+category=	"Game / Cartoon Violence"	OR
+category=	"Gruesome Content"	OR
+category=	"Historical Revisionism"	OR
+category=	"Illegal UK"	OR
+category=	"Incidental Nudity"	OR
+category= "Keyloggers" OR
+category=	"Malicious Downloads"	OR
+category=	"Malicious Sites"	OR
+category=	"Malicious Sites"	OR
+category=	"Nudity"	OR
+category=	"P2P / File Sharing"	OR
+category=	"Parked Domain"	OR
+category=	"Parked Domain"	OR
+category=	"Phishing"	OR
+category=	"Pornography"	OR
+category=	"Potential Criminal Activities"	OR
+category=	"Potential Hacking / Computer Crime"	OR
+category=	"Potential Illegal Software"	OR
+category=	"Profanity"	OR
+category=	"Provocative Attire"	OR
+category=	"PUPs"	OR
+category=	"PUPs (potentially unwanted programs)"	OR
+category=	"Residential IP Addresses"	OR
+category=	"School Cheating Info"	OR
+category=	"Sexual Materials"	OR
+category=	"Spam URLs"	OR
+category=	"Spyware / Adware / Keyloggers"	OR
+category=	"Violence"
+
+| stats count by dhost category 
+| sort -count</query>
+        </search>
+        <option name="count">15</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#006D9C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Executables blocked and sus keywords</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search action=blocked AND *.exe (.ru OR .cn OR .kp OR .hk OR .tw OR hack OR maliscious OR bad OR suspicious OR evade)
+| stats sum(eval(bytes / 1000000)) as "MB" by body category url user
+| sort -MB 
+| dedup body</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="body">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="MB">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Bytes by App</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| stats sum(eval(bytes / 1000000)) as "MB" by app | search MB &gt; 0 
+| top 20 app bytes</query>
+        </search>
+        <option name="count">6</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+    <panel>
+      <title>This search helps you to learn more about your data by grouping events together based on their similarity and showing you a few of events from each cluster. It uses labelonly=t to keep each event in the cluster and append them with a cluster_label. The sort command is used to show the results in descending order by its size (cluster_count), then its cluster_label, then the indexed timestamp of the event (_time). The dedup command is then used to show the first five events in each cluster, using the cluster_label to differentiate between each cluster.</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| search
+body!="*https://avistacorp-my.sharepoint.com:443*"
+body!="*http:1%20CON*"
+body!="*https://inference.location.live.net:443*"
+body!="*https://gwrtdp.tclclouds.com:443*"
+body!="*https://us-west-2.queue.amazonaws.com/*"
+body!="*https://v10c.events.data.microsoft.com:443"
+body!="*https://settings-win.data.microsoft.com:443"
+body!="*https://login.microsoftonline.com:443"
+body!="*https://cts.cloud.sitecore.net:443"
+body!="*https://api.appcues.net/v1/socket/websocket?vsn=2.0.0"
+body!="*https://services3.arcgis.com:443"
+body!="*https://sampleserver6.arcgisonline.com:443"
+body!="*https://static.foxnews.com/static/orion/scripts/fox-news/elections/2020/banner/xdcomm.js"
+body!="*http://ping.citrix.com/"
+body!="*https://cloud.tenable.com:443"
+body!="*https://presence.teams.microsoft.com:443"
+body!="*https://self.events.data.microsoft.com:443"
+body!="*https://outlook.office365.com:443"
+body!="*https://synthetic.api.appdynamics.com:443"
+body!="*https://dnaservices.cisco.com:443"
+body!="*https://boomcatch.xmatters.com/beacon"
+body!="*https://ase.autodesk.com:443"
+body!="*https://client.wns.windows.com:443"
+body!="*https://teams.events.data.microsoft.com:443"
+body!="*https://markets.morningstarcommodity.com/cdb/cometd/connect"
+body!="*https://lfodown01-b.cloudsink.net:443"
+body!="*https://ts01-b.cloudsink.net:443"
+body!="*https://browser.pipe.aria.microsoft.com:443"
+body!="*https://odc.officeapps.live.com:443"
+body!="*https://utility.arcgis.com:443"
+body!="*https://nexusrules.officeapps.live.com:443"
+body!="*http://ocsp.mwginternal.com/ocsp/0/com.scur.engine.sslclientcontext.690/4e22b64d768e3295747e8025853974a04bf3291a"
+body!="*https://keyvalueservice.icloud.com:443"
+body!="*https://v10.vortex-win.data.microsoft.com:443"
+body!="*https://feeds.kontiki.com:443"
+body!="*https://avista.maps.arcgis.com:443"
+body!="*https://www.yammer.com/api/v1/yamalytics/webui"
+body!="*https://data-authenticator.anypoint.mulesoft.com:443"
+body!="*http://h2245.corp.com:9090/"
+body!="*https://v10.events.data.microsoft.com:443"
+body!="*http://h1353.corp.com:9090/"
+body!="*http://h1354.corp.com:9090/"
+body!="*http://h2244.corp.com:9090/"
+body!="*http://misproxy.corp.com:9090/"
+body!="*https://teams.microsoft.com:443"
+body!="*https://edge.microsoft.com:443"
+body!="*https://api.robinhood.com/inbox/should_badge/"
+body!="*https://appmetricsproxy.arcfmsolution.com/MetricsRecord"
+body!="*https://www.arcgis.com:443"
+body!="*https://config.teams.microsoft.com:443"
+body!="*https://augloop.office.com/"
+body!="*https://app.pendo.io:443"
+
+| fields body 
+| cluster t=0.9 field=body labelonly=t showcount=t |table body cluster_count cluster_label
+| sort - cluster_count, cluster_label, _time | dedup 5 cluster_label</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="cluster_count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>User Agent Distribution</title>
+      <chart>
+        <search base="proxy_traffic">
+          <query>search  ua!=_ 
+|  eval length=len(ua)  
+| stats count by ua length</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">scatter</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Unusual UA by length</title>
+      <table>
+        <search base="proxy_traffic">
+          <query> search ua!=_  | eval length=len(ua)  | table  ua length  | sort  - length 
+| dedup ua</query>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="ua">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Uploaded Data</title>
+      <table>
+        <title>| search mtd=POST OR mtd=PUT  | stats sum(bytes) as size, values(mtd) as method, first(url) as url by user  | sort -size</title>
+        <search base="proxy_traffic">
+          <query>| search mtd=POST OR mtd=PUT 
+| stats sum(eval(bytes / 1000000))  as sizeMB, values(mtd) as method, first(url) as url by user 
+| sort -sizeMB</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="size">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="sizeMB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Proxy Activity</title>
+      <chart>
+        <search>
+          <query>| tstats summariesonly=true sum(proxy_events.bytes_in) as "downloaded" sum(proxy_events.bytes_out) as "uploaded" from datamodel=proxy where index=proxy by  _time span=1d
+| eval downloaded=round(downloaded/(1024*1024*1024), 2)
+| eval uploaded=round(uploaded/(1024*1024*1024), 2)</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">small</option>
+        <option name="trellis.splitBy">_aggregation</option>
+      </chart>
+    </panel>
+  </row>
+</form>
