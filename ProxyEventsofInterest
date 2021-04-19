@@ -1,0 +1,322 @@
+<form theme="dark">
+  <label>ProxyEvents of Interest (uses base)</label>
+  <description>Users with more than 1gb in a given category, Top App by Count,  Top Host by App, Top User by Host, Rare App, Top 20 apps - Status Types where "server error), Interesting Country domain, Our Domain Typo Squat, Top blocked hosts, C2C, MB personal network storage, Concurrent Destination Host usage</description>
+  <search id="proxy_traffic">
+    <query>index=proxy sourcetype="ourproxy" | fields _time, app urlc url status_type dhost bytes referer action user category src_ip </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="time" token="tkn_time" searchWhenChanged="true">
+      <label>Time Window</label>
+      <default>
+        <earliest>-6h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Users with more than 1gb in a given category</title>
+      <viz type="sankey_diagram_app.sankey_diagram">
+        <title>average bytes transferred between two requested pages.</title>
+        <search base="proxy_traffic">
+          <query>| search user!="BYOD_WCCP_Unauthenticated_User" user!="-"
+| stats sum(eval(bytes / 1000000)) as "MB" by user category
+| where MB&gt;1000</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="sankey_diagram_app.sankey_diagram.colorMode">categorical</option>
+        <option name="sankey_diagram_app.sankey_diagram.maxColor">#3fc77a</option>
+        <option name="sankey_diagram_app.sankey_diagram.minColor">#d93f3c</option>
+        <option name="sankey_diagram_app.sankey_diagram.numOfBins">6</option>
+        <option name="sankey_diagram_app.sankey_diagram.showBackwards">0</option>
+        <option name="sankey_diagram_app.sankey_diagram.showLabels">1</option>
+        <option name="sankey_diagram_app.sankey_diagram.showLegend">1</option>
+        <option name="sankey_diagram_app.sankey_diagram.showSelf">0</option>
+        <option name="sankey_diagram_app.sankey_diagram.showTooltip">1</option>
+        <option name="sankey_diagram_app.sankey_diagram.styleBackwards">0</option>
+        <option name="sankey_diagram_app.sankey_diagram.useColors">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top App by Count</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>
+
+| top 10 app urlc url</query>
+        </search>
+        <option name="count">7</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="app">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Top Host by App</title>
+      <table>
+        <title>Excludes streaming categories and windows update</title>
+        <search base="proxy_traffic">
+          <query>| search category!="Entertainment, Streaming Media" category!="Entertainment" dhost!=*googlevideo.com  dhost!=*cloudfront.net dhost!=*windowsupdate.com   dhost!=*microsoft.com
+| eval gb=(bytes/1024/1024)     
+| stats sum(gb) AS totalGB by dhost
+| top  totalGB dhost 
+ showcount=false</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="MB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="totalGB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Top User by Host</title>
+      <table>
+        <title>Excludes streaming categories and windows update</title>
+        <search base="proxy_traffic">
+          <query>| search category!="Entertainment, Streaming Media" category!="Entertainment" dhost!=*googlevideo.com  dhost!=*cloudfront.net dhost!=*windowsupdate.com   dhost!=*microsoft.com  user!=BYOD_WCCP_Unauthenticated_User | eval gb=(bytes/1024/1024)       | stats  sum(gb) AS totalGB by user dhost  | top 25 totalGB user  dhost  showcount=false showperc=false</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="MB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="totalGB">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Rare App</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>
+| Rare app limit=20
+showcount=false showperc=false</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Top 20 apps - Status Types where "server error)</title>
+      <table>
+        <search base="proxy_traffic">
+          <query> search status_type="Server Error" | top  20 app</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">highlow</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="app">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>China and Russia OR North Korean OR taiwan OR hong kong OR netherland OR ireland Hosted Hosts</title>
+      <table>
+        <title>Embargo countries: Cuba, Iran, Sudan, Syria, Ukrain</title>
+        <search base="proxy_traffic">
+          <query> search
+dhost=*.ru OR dhost=*.cn OR dhost=*.kp OR dhost=*.tw OR dhost=*.hk OR dhost=*.nl OR dhost=*.ie OR dhost=*.cu  OR dhost=*.ir  OR dhost=*.cu  OR dhost=*.sd OR dhost=*.sy  OR dhost=*.ua
+| stats values(dhost) by   action category 
+| sort action</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="src_ip">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="action">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="dhost">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Myavista Phish/Typo Squat</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>  search dhost IN (
+goggle.com,
+g00gle.com,
+gooogle.com,
+https://github.com/elceef/dnstwist
+ideally block if you can but if you can on proxy
+)
+
+| stats values(dhost) by   action category user
+| sort action</query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top blocked hosts</title>
+      <table>
+        <title>Has another site been pwned?</title>
+        <search base="proxy_traffic">
+          <query>search action=blocked  dhost!=*.corp.com
+| bin _time span=1d
+| top limit=10 dhost referer by _time 
+showperc=false
+showcount=false</query>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="dhost">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>C2C</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>|  search dhost!=services3.arcgis.com   dhost!=*avista.ultipro.com*    dhost!=m.media-amazon.com    dhost!=photos.zillowstatic.com     dhost!=*youtube.com*    dhost!=utility.arcgisonline.com     dhost!=*fp.measure.office.com    dhost!=*.yammer.com    dhost!=avi1061.zonarsystems.net    dhost!=Avista.maps.arcgis.com    dhost!=access.itron.com    dhost!=avista.platform.telogis.com    dhost!=avista.sumtotal.host    dhost!=*yahoo.com*    dhost!=boomcatch.xmatters.com    dhost!=www.google.com    dhost!=www.facebook.com    dhost!=www.bing.com    dhost!=video-sea1-1.xx.fbcdn.net    dhost!=utility.arcgisonline.com    dhost!=synthetic.api.appdynamics.com    dhost!=services3.arcgis.com    dhost!=login.microsoftonline.com    dhost!=kit-pro.fontawesome.com    dhost!=kh.google.com    dhost!=internalcommunications.us.newsweaver.com    dhost!=inference.location.live.net    dhost!=img-s-msn-com.akamaized.net    dhost!=ctldl.windowsupdate.com    dhost!=avistacorp-my.sharepoint.com    dhost!=avi1061.zonarsystems.net    dhost!=*gov.us*    dhost!=*geotab.coms    dhost!=*.arcgisonline.com    dhost!=*caiso.xmatters.com    dhost!=settings-win.data.microsoft.com    dhost!=img-s-msn-com.akamaized.net    dhost!=www.google-analytics.com    dhost!=Avista.maps.arcgis.com    dhost!=sampleserver6.arcgisonline.com    dhost!=v10c.events.data.microsoft.com    dhost!=config.teams.microsoft.com    dhost!=vonotificationmgmt-production.service.signalr.net    dhost!=mobile.pipe.aria.microsoft.com    dhost!=ping.citrix.com    dhost!=video-sea1-1.xx.fbcdn.net    dhost!=api.twitter.com    dhost!=*airbnb.com*    dhost!=*.icloud.com    dhost!=*maps.googleapis.com*    dhost!=*craigslist.org*    dhost!=hello.myfonts.net 
+dhost!=socketio.hesapps.com 
+ dhost!="outlook.office365.com"  dhost!="statics.teams.cdn.office.net"  dhost!="cloud.tenable.com"  dhost!="client.wns.windows.com"  dhost!="zpns.zoom.us"  dhost!="2.tlu.dl.delivery.mp.microsoft.com" | streamstats current=f last(_time) as next_time by dhost | eval gap = next_time - _time       | stats  count, avg(gap) as avg_gap, var(gap) as var_gap by dhost src_ip       | search avg_gap&lt;50 count&gt;500       | sort  avg_gap</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="avg_gap">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="var_gap">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>MB personal network storage</title>
+      <table>
+        <search>
+          <query>| tstats summariesonly=true sum(proxy_events.bytes_out) as "downloaded" sum(proxy_events.bytes_in) as "uploaded" count as "event count" from datamodel=proxy where index=_proxy proxy_events.user!="*$$" proxy_events.user!="*BYOD*" proxy_events.category="Personal Network Storage" by  proxy_events.user
+| eval downloaded=round(downloaded/(1024*1024), 2)
+| eval uploaded=round(uploaded/(1024*1024), 2)
+| sort "uploaded" desc</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="proxy_events.user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="uploaded">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Concurrent Destination Host usage</title>
+      <table>
+        <search base="proxy_traffic">
+          <query>| eventstats dc(src_ip) as src_count by dhost,user              
+| search src_count&gt;1                  
+| sort 0 + _time             
+| streamstats current=t window=2 earliest(_time) as prev_time,earliest(src) as prev_src by dhost,user      
+| where (src!=prev_src)                
+| eval time_diff=abs(_time-prev_time)                      
+| where time_diff&lt;300                    
+| search user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Server_Network user!=BYOD_WCCP_Unauthenticated_User  user!=Guest_WCCP_Unauthenticated_User 
+| table  user, dhost, src, _time, prev_src, prev_time, time_diff, count</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="proxy_events.user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="uploaded">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
