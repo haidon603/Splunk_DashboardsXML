@@ -1,0 +1,194 @@
+<form stylesheet="sample_dashboards.css" theme="light">
+  <label>Haidon's User Lockout Investigation</label>
+  <description>Utilize this page to search user domain lockouts and the source systems likely involved.  Additionally this page provides a listing of activity associate with account unlocks, wirelss and logon failures. Uses a base search for optimal results when able to.</description>
+  <search id="base_lockout_events">
+    <query>source=WinEventLog:Security (EventCode=4740 OR EventCode=4767) (Target_Account_Name!=localadmin OR user!=localadmin OR Target_Account_Name=$tkn_user$) 
+ | eval Account=if(Target_Account_Name!=NULL, Target_Account_Name, user) 
+ | eval Machine=if(Caller_Machine_Name!=NULL, Caller_Machine_Name, Caller_Computer_Name) 
+ | eval "Event Name"=if(name!=NULL, name, name) 
+ | fillnull Value="Unknown" Machine 
+ | fillnull value="Unknown" system_type
+ | eval Time=strftime(_time, "%m/%d/%y %H:%M:%S") 
+ </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="text" token="tkn_user" searchWhenChanged="false">
+      <label>User</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="time" token="tkn_time" searchWhenChanged="false">
+      <label>Time</label>
+      <default>
+        <earliest>-12h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Lockout over 3 days</title>
+      <single>
+        <search>
+          <query> source=WinEventLog:Security "A user account was locked out"
+| timechart count by name</query>
+          <earliest>-3d@m</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051", "0x0877a6", "0xf8be34", "0xf1813f", "0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Lockouts by Time</title>
+      <chart>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4740 Account=$tkn_user$ | timechart count(EventCode) as "Lockout Events"</query>
+        </search>
+        <search type="annotation" base="base_lockout_events">
+          <query> | search EventCode=4740 Account=$tkn_user$ 
+            | eval annotation_label = Account + " (" + Machine + ")"
+            | eval annotation_category = system_type </query>
+        </search>
+        <option name="charting.axisTitleY2.text">Unlock Event</option>
+        <option name="charting.axisY2.abbreviation">auto</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">EventCode</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Which DC are lockouts happening on most?</title>
+      <chart>
+        <search>
+          <query> sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) $tkn_user$ 
+| timechart count by host</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Lockout Events</title>
+      <table>
+        <title>Status\Sub-Status Code	Description 0XC000006D	The cause is either a bad username or authentication information 0XC000006E	Indicates a referenced user name and authentication information are valid, but some user account restriction has prevented successful authentication (such as time-of-day restrictions).</title>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4740 Account=$tkn_user$ | table Time Account Caller_Computer_Name system_type "Event Name" Status</query>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Account">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <drilldown>
+          <link target="_blank">/app/WS-SECOPS/acs_authentication_investigation?form.tkn_user=$click.value2$&amp;form.tkn_time.earliest=$earliest$&amp;form.tkn_time.latest=$latest$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Unlocks by Time</title>
+      <chart>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4767 Account=$tkn_user$ | timechart count(EventCode) as "Unlock Events"</query>
+        </search>
+        <search type="annotation" base="base_lockout_events">
+          <query> | search EventCode=4767 Account=$tkn_user$ 
+            | eval annotation_label = user
+            | eval annotation_category = "Unlocked by: " + src_user</query>
+        </search>
+        <option name="charting.axisTitleY2.text">Unlock Event</option>
+        <option name="charting.axisY2.abbreviation">auto</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">EventCode</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Unlock Events</title>
+      <table>
+        <title>src_user being the individual who initiated the unlock</title>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4767 Account=$tkn_user$ | table _time user src_user EventCode  msad_action status "Event Name"</query>
+        </search>
+        <option name="drilldown">cell</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>AAA Failure (24407: Is required to change password 24408 Entered the wrong password 24415 Failed since user's account is locked out)</title>
+      <table>
+        <title>ACS</title>
+        <search>
+          <query>index=wirelessauth (FailureReason=24415 OR FailureReason=24407 OR FailureReason=24408) AND UserName="Guest" OR UserName=*$tkn_user$* | stats count by FailureReason, MESSAGE_TEXT, UserName | sort - count</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="count">3</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Wireless lockouts</title>
+        <search>
+          <query>sourcetype=wireless  $tkn_user$   |  stats count as "ACS Events" by action MESSAGE_TEXT</query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Logon Failures</title>
+        <search>
+          <query>index=* sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) AND user=$tkn_user$
+|  timechart count by "Event Name"</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>
