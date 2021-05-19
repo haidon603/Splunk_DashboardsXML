@@ -1,0 +1,327 @@
+<form theme="dark">
+  <label>DNS Analysis</label>
+  <description>Long DNS Queries, DNS Beaconing Activity, DNS by subdomain and domain, TOP FQDN DNS, Users with many DNS requests. Exlude network scanners, office applications, updaate hosts, etc. </description>
+  <search id="dns">
+    <query>(index=dns tag=dns) query!="*mcafee(3)com*" query!="*office(3)com*" query!="*footprintdns(3)com*" query!="*ip6*" query!="*in-addr*" query!="*microsoft(3)com*" query!="*google*" query!="*aws*" | fields _time,query, fqdn, tld, tld2, tld3 
+</query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <search id="dns_query_information">
+    <query>
+      index=dns Snd | fields questiontype, response, transport
+    </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="tkn_time" searchWhenChanged="false">
+      <label>Time Window</label>
+      <default>
+        <earliest>-1h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>DNS Query Types</title>
+      <chart>
+        <search base="dns_query_information">
+          <query>| stats count by questiontype | sort count desc</query>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>DNS Response Codes</title>
+      <chart>
+        <search base="dns_query_information">
+          <query>| stats count by response | sort count desc</query>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>DNS Protocols</title>
+      <chart>
+        <search base="dns_query_information">
+          <query>| stats count by transport | sort count desc</query>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Long DNS Queries</title>
+      <table>
+        <search base="dns">
+          <query> | fields fqdn  query | mvexpand fqdn | search 
+fqdn!="*.blob.core.windows.net" 
+fqdn!="*.cloudapp.azure.com"  
+fqdn!="*.regional.azure-api.net" 
+fqdn!="*.cosmic.office.net"
+fqdn!="*.herokuspace.com"
+fqdn!="*.msedge.net"
+fqdn!="*.sync.services.mozilla.com"
+fqdn!="*.sharepoint.com"
+fqdn!="*.rt.yammer.com"
+| eval queryLength=len(fqdn)  | stats  count by queryLength fqdn   | sort 10 -queryLength</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="query">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="queryLength">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>DNS Beaconing Activity</title>
+      <table>
+        <search base="dns">
+          <query>| search fqdn!=cloud.tenable.com
+fqdn!=client.wns.windows.com
+fqdn!=sensor.cloud.tenable.com
+fqdn!=dns.msftncsi.com
+fqdn!=ctldl.windowsupdate.com
+fqdn!=settingsfd-geo.trafficmanager.net
+fqdn!=pint.citrix.com
+fqdn!=config.teams.trafficmanager.net
+fqdn!=login.microsoftonline.com
+| streamstats current=f last(_time) as last_time by fqdn
+| eval gap=last_time - _time
+| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY fqdn
+| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)
+| sort -count
+| where VarianceBeaconTime &lt; 60 AND count &gt; 2 AND AverageBeaconTime&gt;1.000
+| table  fqdn VarianceBeaconTime  count AverageBeaconTime</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="query">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="VarianceBeaconTime">
+          <colorPalette type="minMidMax" maxColor="#FFFFFF" minColor="#53A051"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>14 days Users with a Sudden Increase in Sending Many DNS Requests. PAN:Traffic as Source The query below will output the user, the time, the source IP, the destination IP, the number of DNS requests, the number of data samples, the number of standard deviations away from the source's average of DNS requests per day, and the number of standard deviations away from the organization's average of DNS requests per day. It will show output when the number of DNS requests are 3 standard deviations above the source's or organization's average for the latest day compared with the latest 30 days.</title>
+      <table>
+        <search>
+          <query>index=firewall dest_port=53 NOT user=unknown
+|  bucket _time span=1d
+| stats count by user _time src_ip dest_ip
+| eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
+| where num_data_samples &gt;=4 AND count &gt; avg_count + 3 * stdev_count AND count &gt; per_source_avg_count + 3 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
+| eval num_standard_deviations_away_from_per_source_average = round(abs(count - per_source_avg_count) / per_source_stdev_count,2)
+| fields - maxtime per_source* avg* stdev* _time
+|  sort - num_standard_deviations_away_from_per_source_average</query>
+          <earliest>-14d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">preview</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="num_standard_deviations_away_from_per_source_average">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>7 days Cisco ASA Users with a Sudden Increase in Sending Many DNS Requests'</title>
+      <table>
+        <search>
+          <query>index=firewall dest_port=53 
+| stats count by user, _time, src_ip, dest_ip, field2
+| eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
+| where num_data_samples &gt;=4 AND count &gt; avg_count + 3 * stdev_count AND count &gt; per_source_avg_count + 3 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
+| eval num_standard_deviations_away_from_org_average = round(abs(count - avg_count) / stdev_count,2), num_standard_deviations_away_from_per_source_average = round(abs(count - per_source_avg_count) / per_source_stdev_count,2)
+| fields - maxtime per_source* avg* stdev* 
+| sort - num_standard_deviations_away_from_per_source_average 
+|  top user limit=15</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">8</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">preview</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="num_standard_deviations_away_from_per_source_average">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="percent">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top DNS Queries</title>
+      <table>
+        <search base="dns">
+          <query> |  dedup fqdn | fields fqdn | rex field=fqdn "^(?:[\w\.-]+\.)?(?:(?&lt;tld4&gt;[\w\.]+\.)){0,}(?&lt;tld3&gt;[\w\.-]+\.(?&lt;tld2&gt;[\w\.-]+\.(?&lt;tld&gt;[\w\.]+)))$$"  
+| stats count by  tld3
+| rename tld3 as "Query" | sort 10 - count</query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>TOP FQDN DNS</title>
+      <table>
+        <title>omitting common events</title>
+        <search base="dns">
+          <query>|search NOT ("(4)corp(3)com(0)" OR "(10)avistacorp(3)com(0)") Snd (AAAA OR A)
+fqdn!=cloud.tenable.com
+fqdn!=client.wns.windows.com
+fqdn!=sensor.cloud.tenable.com
+fqdn!=dns.msftncsi.com
+fqdn!=ctldl.windowsupdate.com
+fqdn!=settingsfd-geo.trafficmanager.net
+fqdn!=pint.citrix.com
+fqdn!=config.teams.trafficmanager.net
+fqdn!=login.microsoftonline.com
+| fields fqdn | top 30 fqdn</query>
+        </search>
+        <option name="count">6</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="fqdn">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Queries Per Domain</title>
+      <table>
+        <search base="dns">
+          <query>|   dedup fqdn |  rex field=fqdn "^(?:[\w\.-]+\.)?(?:(?&lt;tld4&gt;[\w\.]+\.)){0,}(?&lt;tld3&gt;[\w\.-]+\.(?&lt;tld2&gt;[\w\.-]+\.(?&lt;tld&gt;[\w\.]+)))$"  
+|  stats count by tld3  tld
+|  stats sum(count) as count, dc(tld3) as query_count, values(tld3) as queries by tld | sort query_count</query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="query_count">
+          <colorPalette type="minMidMax" maxColor="#006D9C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="tld">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Unique FQDN by TLD Count</title>
+      <table>
+        <search base="dns">
+          <query>| rex field=fqdn "^(?:[\w\.-]+\.)?(?:(?&lt;tld4&gt;[\w\.]+\.)){0,}(?&lt;tld3&gt;[\w\.-]+\.(?&lt;tld2&gt;[\w\.-]+\.(?&lt;tld&gt;[\w\.]+)))$"  
+| bucket span=1h _time
+| stats values(fqdn) as fqdn, count by _time tld 
+| stats sparkline(sum(count),1h) as sparkline,dc(fqdn) as fqdn_count by tld 
+| sort - fqdn_count</query>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="fqdn_count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
