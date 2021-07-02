@@ -1,0 +1,195 @@
+<form>
+  <label>Citrix, F5 and ASA Config Changes</label>
+  <description>Configuration change dashboard for platforms</description>
+  <search id="citrix_netscaler_changes">
+    <query>index=ava_ns_adc sourcetype="citrix:netscaler:syslog" (CMD_EXECUTED set)
+| rename Remote_ip as src, Command as command, Status as status | fields _time, dvc, host, src, user event_source event_name status command</query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <search id="f5_bigip_changes">
+    <query>index=firewall sourcetype="f5:bigip:syslog" 01070417 mcpd  NOT "mcpd-primary"  NOT asm_attack_type  NOT asm_device_sync NOT analytics_realtime_external_report NOT auto_update_schedule NOT nsyncd_status_module_name NOT auto_update_status_name NOT asm_violation NOT classification_updates_installed NOT asm_predefined_policy | fields _time, host, user, client_type, transaction_id, transaction_step, object_type, transaction_change, transaction_status</query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <search id="cisco_asa_changes">
+    <query>
+      index=firewall sourcetype="cisco:asa" (ASA-5-111010 OR ASA-5-111005) tag=change NOT "dir " NOT "no terminal pager" NOT "packet-tracer" NOT 172.16.2.107  | rename field2 as dvc
+| bin span=1h _time as time_block
+| eval time_block=strftime(time_block, "%Y%m%dT%H%M%S")
+| eval time_command=strftime(_time, "%Y-%m-%dT%H:%M:%S") . " - " . command | fields time_command, time_block, dvc, user, src, severity_level
+    </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <search id="cisco_vpn_changes">
+    <query>
+      index=vpnsourcetype="cisco:asa" (ASA-5-111010 OR ASA-5-111005) tag=change NOT "dir " NOT "no terminal pager" NOT "packet-tracer" NOT 172.16.2.107  | rename field2 as dvc
+| bin span=1h _time as time_block
+| eval time_block=strftime(time_block, "%Y%m%dT%H%M%S")
+| eval time_command=strftime(_time, "%Y-%m-%dT%H:%M:%S") . " - " . command | fields time_command, time_block, dvc, user, src, severity_level
+    </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="tkn_time">
+      <label>Time</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Citrix Netscaler</title>
+      <single>
+        <search base="citrix_netscaler_changes">
+          <query>| stats count as changes</query>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>F5 Big-IP</title>
+      <single>
+        <search base="f5_bigip_changes">
+          <query>| stats count as changes</query>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Cisco ASA</title>
+      <single>
+        <search base="cisco_asa_changes">
+          <query>| stats count(time_command) as command_count</query>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Cisco VPN</title>
+      <single>
+        <search base="cisco_vpn_changes">
+          <query>| stats count(time_command) as command_count</query>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Citrix Netscaler Change Summary</title>
+      <table>
+        <search base="citrix_netscaler_changes">
+          <query>| table _time, dvc, host, src, user event_source event_name status command</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>F5 BIG-IP Change Summary</title>
+      <table>
+        <search base="f5_bigip_changes">
+          <query>| table _time, user, client_type, transaction_id, transaction_step, object_type, transaction_change, transaction_status 
+|  sort _time desc</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Cisco ASA Change Summary</title>
+      <table>
+        <search base="cisco_asa_changes">
+          <query>| stats values(time_command) as time_command, count(time_command) as command_count by time_block, dvc, user, src, severity_level</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Cisco VPN Change Summary</title>
+      <table>
+        <search base="cisco_vpn_changes">
+          <query>| stats values(time_command) as time_command, count(time_command) as command_count by time_block, dvc, user, src, severity_level</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
