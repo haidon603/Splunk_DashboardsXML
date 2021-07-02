@@ -1,0 +1,309 @@
+<form theme="dark">
+  <label>Data Exfiltration</label>
+  <description>These queries are specifically targeted to identify behaviors that could be viewed as data exfiltration.
+https://zpettry.com/cybersecurity/splunk-queries-data-exfiltration/</description>
+  <fieldset submitButton="True" autoRun="true">
+    <input type="text" token="email_token">
+      <label>Email Sender</label>
+    </input>
+    <input type="text" token="out_token">
+      <label>Bytes_out</label>
+    </input>
+    <input type="text" token="user_token">
+      <label>Hosts Visited Increase</label>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>21 D Users Suddenly Sending Excessive Email - The query below will output the email sender, the count of emails sent within the last day, the per day average emails sent over the last 30 days, and the lower and upper bounds of 3 standard deviations from the average emails count. The results will populate when the count is outside of the 3 standard deviations from the average. High STDEV value indicates values are wide from low and high range of emails sent</title>
+      <table>
+        <search>
+          <query>(index=email sourcetype=emailClient) AND (sender_address=*companydomain.com) directionality=Originating
+| bucket _time span=1d
+| stats count by sender_address, _time
+| eval maxtime=now() | stats count as num_data_samples max(eval(if(_time &gt;= relative_time(maxtime, "-1d@h"), 'count',null))) as "count" avg(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as avg stdev(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as stdev by "sender_address"
+| eval lowerBound=(avg-stdev*6), upperBound=(avg+stdev*6)
+| eval isOutlier=if(('count' &lt; lowerBound OR 'count' &gt; upperBound) AND num_data_samples &gt;=7, 1, 0) | where isOutlier=1 AND count&gt;10 AND count&gt;upperBound | table sender_address, num_data_samples, count, avg, stdev, upperBound
+| fields - upperBound</query>
+          <earliest>-21d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="stdev">
+          <colorPalette type="list">[#F8BE34,#F1813F,#DC4E41,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">4,8,30,100</scale>
+        </format>
+        <format type="color" field="avg">
+          <colorPalette type="list">[#53A051,#006D9C,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">0,30,70,100</scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="list">[#62B3B2,#62B3B2]</colorPalette>
+          <scale type="threshold">100</scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>| stats count by recipient_address message_subject |  dedup message_subject</title>
+        <search>
+          <query>(index=email sourcetype=emailClient) AND (sender_address=*companydomain.com)AND (sender_address=$email_token$) directionality=Originating 
+| bucket _time span=1d
+| table sender_address, recipient_address,total_bytes message_subject 
+| stats count by recipient_address message_subject  
+|  dedup message_subject
+| sort -count</query>
+          <earliest>-21d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="recipient_address">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>14 Days MWG Users with a Large Increase in Web Traffic Moving out of the Network</title>
+      <table>
+        <search>
+          <query>index=proxy sourcetype="proxyvendor" NOT (user=BYOD_WCCP_Unauthenticated_User) NOT (user=Internal_WCCP_Unauthenticated_User) NOT (user=Guest_WCCP_Unauthenticated_User)
+| bucket _time span=1d
+| stats sum(bytes*) as bytes* by user _time src_ip
+| eventstats max(_time) as maxtime avg(bytes_out) as avg_bytes_out stdev(bytes_out) as stdev_bytes_out | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),bytes_out,null))) as per_source_avg_bytes_out stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),bytes_out,null))) as per_source_stdev_bytes_out by src_ip  
+| where num_data_samples &gt;=4 AND bytes_out &gt; avg_bytes_out + 3 * stdev_bytes_out AND bytes_out &gt; per_source_avg_bytes_out + 3 * per_source_stdev_bytes_out AND _time &gt;= relative_time(maxtime, "@h")
+| eval  num_standard_deviations_away_from_per_source_average = round(abs(bytes_out - per_source_avg_bytes_out) / per_source_stdev_bytes_out,2)
+| fields - maxtime per_source* avg* stdev*  bytes_ab_storage bytes_per_second bytes_uncategorized bytestart bytes_to_client bytes_to_server bytes_from_client bytes_from_server num_data_samples
+| sort - num_standard_deviations_away_from_per_source_average</query>
+          <earliest>-14d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="num_standard_deviations_away_from_per_source_average">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="bytes_out">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>10 day average</title>
+        <search>
+          <query>index=proxy sourcetype="proxyvendor" AND user=$out_token$
+| stats sum(eval(bytes / 1000000)) as "MB" by  dhost
+| sort -MB</query>
+          <earliest>-10d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="dhost">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Source Users Communicating with Far More Hosts Than Normal within 14 Days</title>
+      <table>
+        <search>
+          <query>index=proxy sourcetype="proxyvendor"  NOT user="" NOT user="Guest_WCCP_Unauthenticated_User" NOT user="Internal_WCCP_Unauthenticated_User" NOT user="BYOD_WCCP_Unauthenticated_User"
+|  bucket _time span=1d
+| stats count by dhost, user, _time, src
+| eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by dhost  
+| where num_data_samples &gt;=2 AND count &gt; avg_count + 2 * stdev_count AND count &gt; per_source_avg_count + 2.25 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
+| eval num_standard_deviations_away_from_per_source_average = round(abs(count - per_source_avg_count) / per_source_stdev_count,2)
+| fields - maxtime per_source* avg* stdev_count _time dhost
+|  sort - num_standard_deviations_away_from_per_source_average</query>
+          <earliest>1610482879.000</earliest>
+          <latest>1611692479.000</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>| stats sum(eval(bytes / 1000000)) as "MB" by body</title>
+        <search>
+          <query>index=ava_ss_proxy sourcetype="mcafee:wg:kv" 
+user=$user_token$
+| bucket _time span=1d
+| stats sum(eval(bytes / 1000000)) as "MB" by body 
+| sort -MB</query>
+          <earliest>-14d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="percent">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="dhost">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>14 days Users with a Sudden Increase in Sending Many DNS Requests. PAN:Traffic as Source The query below will output the user, the time, the source IP, the destination IP, the number of DNS requests, the number of data samples, the number of standard deviations away from the source's average of DNS requests per day, and the number of standard deviations away from the organization's average of DNS requests per day. It will show output when the number of DNS requests are 3 standard deviations above the source's or organization's average for the latest day compared with the latest 30 days.</title>
+      <table>
+        <search>
+          <query>index=ava_ss_firewall sourcetype="pan:traffic" dest_port=53 NOT user=unknown
+|  bucket _time span=1d
+| stats count by user _time src_ip dest_ip
+| eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
+| where num_data_samples &gt;=4 AND count &gt; avg_count + 3 * stdev_count AND count &gt; per_source_avg_count + 3 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
+| eval num_standard_deviations_away_from_per_source_average = round(abs(count - per_source_avg_count) / per_source_stdev_count,2)
+| fields - maxtime per_source* avg* stdev* _time
+|  sort - num_standard_deviations_away_from_per_source_average</query>
+          <earliest>-14d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">preview</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="num_standard_deviations_away_from_per_source_average">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>7 days Cisco ASA Users with a Sudden Increase in Sending Many DNS Requests Source Type Cisco:ASA Lowercase'User'</title>
+      <table>
+        <search>
+          <query>index=ava_ns_vpn OR index=ava_ns_firewall sourcetype="cisco:asa" dest_port=53 
+| stats count by user, _time, src_ip, dest_ip, field2
+| eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
+| where num_data_samples &gt;=4 AND count &gt; avg_count + 3 * stdev_count AND count &gt; per_source_avg_count + 3 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
+| eval num_standard_deviations_away_from_org_average = round(abs(count - avg_count) / stdev_count,2), num_standard_deviations_away_from_per_source_average = round(abs(count - per_source_avg_count) / per_source_stdev_count,2)
+| fields - maxtime per_source* avg* stdev* 
+| sort - num_standard_deviations_away_from_per_source_average 
+|  top user limit=15</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">preview</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="num_standard_deviations_away_from_per_source_average">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="user">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Users with a Sudden Increase in  Corporate emails sent to Non-Corporate Emails receivers</title>
+      <table>
+        <search>
+          <query>(index=email sourcetype=emailClient) AND (sender_address=*companydomain.com) AND recipient_address!="*@companydomain.com"
+| bucket _time span=1d
+| stats count by sender_address, _time
+| eval maxtime=now() | stats count as num_data_samples max(eval(if(_time &gt;= relative_time(maxtime, "-1d@h"), 'count',null))) as "count" avg(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as avg stdev(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as stdev by "from"
+| eval lowerBound=(avg-stdev*3), upperBound=(avg+stdev*3)
+| eval isOutlier=if(('count' &lt; lowerBound OR 'count' &gt; upperBound) AND num_data_samples &gt;=7, 1, 0) | where isOutlier=1 AND count&gt;10 AND count&gt;upperBound | table sender_address, num_data_samples, count, avg, stdev, upperBound</query>
+          <earliest>-14d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Personal Network Storage by User (MBs)</title>
+      <table>
+        <search>
+          <query>| tstats summariesonly=true values(proxy_events.dhost) as "destination hosts" sum(proxy_events.bytes_out) as "downloaded" sum(proxy_events.bytes_in) as "uploaded" count as "event count" from datamodel=ava_dm_proxy where index=ava_ss_proxy proxy_events.user!="*$$" proxy_events.user!="*BYOD*" proxy_events.category="Personal Network Storage" by proxy_events.user
+| eval downloaded=round(downloaded/(1024*1024), 2)
+| eval uploaded=round(uploaded/(1024*1024), 2)
+| sort "uploaded" desc</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
