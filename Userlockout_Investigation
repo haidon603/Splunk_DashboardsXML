@@ -1,8 +1,8 @@
-<form stylesheet="sample_dashboards.css" theme="light">
-  <label>Haidon's User Lockout Investigation</label>
-  <description>Utilize this page to search user domain lockouts and the source systems likely involved.  Additionally this page provides a listing of activity associate with account unlocks, wirelss and logon failures. Uses a base search for optimal results when able to.</description>
+<form stylesheet="sample_dashboards.css" theme="dark">
+  <label>User Lockout Investigation</label>
+  <description>Utilize this page to search user domain lockouts and the source systems likely involved.  Additionally this page provides a listing of activity associate with account unlocks, ACS and logon failures, Logon Map of origins</description>
   <search id="base_lockout_events">
-    <query>source=WinEventLog:Security (EventCode=4740 OR EventCode=4767) (Target_Account_Name!=localadmin OR user!=localadmin OR Target_Account_Name=$tkn_user$) 
+    <query>(index=ava_cs_wineventlog OR index=wineventlog) source=WinEventLog:Security (EventCode=4740 OR EventCode=4767) (Target_Account_Name!=localadmin OR user!=localadmin) $tkn_user$
  | eval Account=if(Target_Account_Name!=NULL, Target_Account_Name, user) 
  | eval Machine=if(Caller_Machine_Name!=NULL, Caller_Machine_Name, Caller_Computer_Name) 
  | eval "Event Name"=if(name!=NULL, name, name) 
@@ -29,21 +29,52 @@
   </fieldset>
   <row>
     <panel>
-      <title>Lockout over 3 days</title>
+      <title>Locked Out Accounts in the last 3 days</title>
       <single>
         <search>
-          <query> source=WinEventLog:Security "A user account was locked out"
-| timechart count by name</query>
+          <query>(index=wineventlog OR index=wineventlog) EventCode=4740  | stats dc(user)</query>
           <earliest>-3d@m</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="height">100</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,20]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unitPosition">after</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Lockout over 7 days</title>
+      <single>
+        <search>
+          <query>(index=wineventlog OR index=wineventlog) source=WinEventLog:Security "A user account was locked out"
+| timechart count</query>
+          <earliest>-7d</earliest>
           <latest>now</latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="colorBy">value</option>
         <option name="colorMode">none</option>
         <option name="drilldown">none</option>
+        <option name="height">63</option>
         <option name="numberPrecision">0</option>
         <option name="rangeColors">["0x53a051", "0x0877a6", "0xf8be34", "0xf1813f", "0xdc4e41"]</option>
         <option name="rangeValues">[0,30,70,100]</option>
+        <option name="refresh.display">progressbar</option>
         <option name="showSparkline">1</option>
         <option name="showTrendIndicator">1</option>
         <option name="trellis.enabled">0</option>
@@ -56,33 +87,11 @@
         <option name="useThousandSeparators">1</option>
       </single>
     </panel>
-  </row>
-  <row>
-    <panel>
-      <title>Lockouts by Time</title>
-      <chart>
-        <search base="base_lockout_events">
-          <query>| search EventCode=4740 Account=$tkn_user$ | timechart count(EventCode) as "Lockout Events"</query>
-        </search>
-        <search type="annotation" base="base_lockout_events">
-          <query> | search EventCode=4740 Account=$tkn_user$ 
-            | eval annotation_label = Account + " (" + Machine + ")"
-            | eval annotation_category = system_type </query>
-        </search>
-        <option name="charting.axisTitleY2.text">Unlock Event</option>
-        <option name="charting.axisY2.abbreviation">auto</option>
-        <option name="charting.axisY2.enabled">1</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.overlayFields">EventCode</option>
-        <option name="charting.drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-      </chart>
-    </panel>
     <panel>
       <title>Which DC are lockouts happening on most?</title>
       <chart>
         <search>
-          <query> sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) $tkn_user$ 
+          <query>index=wineventlog sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) $tkn_user$ 
 | timechart count by host</query>
           <earliest>$tkn_time.earliest$</earliest>
           <latest>$tkn_time.latest$</latest>
@@ -95,14 +104,35 @@
   </row>
   <row>
     <panel>
+      <title>Lockouts by Time</title>
+      <chart>
+        <search type="annotation" base="base_lockout_events">
+          <query> | search EventCode=4740 Account=$tkn_user$ 
+            | eval annotation_label = Account + " (" + Machine + ")"
+            | eval annotation_category = system_type </query>
+        </search>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4740 Account=$tkn_user$ | timechart count(EventCode) as "Lockout Events"</query>
+        </search>
+        <option name="charting.axisTitleY2.text">Unlock Event</option>
+        <option name="charting.axisY2.abbreviation">auto</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">EventCode</option>
+        <option name="charting.drilldown">none</option>
+        <option name="height">208</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
       <title>Lockout Events</title>
       <table>
         <title>Status\Sub-Status Code	Description 0XC000006D	The cause is either a bad username or authentication information 0XC000006E	Indicates a referenced user name and authentication information are valid, but some user account restriction has prevented successful authentication (such as time-of-day restrictions).</title>
         <search base="base_lockout_events">
           <query>| search EventCode=4740 Account=$tkn_user$ | table Time Account Caller_Computer_Name system_type "Event Name" Status</query>
         </search>
+        <option name="count">5</option>
         <option name="drilldown">cell</option>
-        <option name="refresh.display">progressbar</option>
         <format type="color" field="Account">
           <colorPalette type="sharedList"></colorPalette>
           <scale type="sharedCategory"></scale>
@@ -117,13 +147,13 @@
     <panel>
       <title>Unlocks by Time</title>
       <chart>
-        <search base="base_lockout_events">
-          <query>| search EventCode=4767 Account=$tkn_user$ | timechart count(EventCode) as "Unlock Events"</query>
-        </search>
         <search type="annotation" base="base_lockout_events">
           <query> | search EventCode=4767 Account=$tkn_user$ 
             | eval annotation_label = user
             | eval annotation_category = "Unlocked by: " + src_user</query>
+        </search>
+        <search base="base_lockout_events">
+          <query>| search EventCode=4767 Account=$tkn_user$ | timechart count(EventCode) as "Unlock Events"</query>
         </search>
         <option name="charting.axisTitleY2.text">Unlock Event</option>
         <option name="charting.axisY2.abbreviation">auto</option>
@@ -131,6 +161,7 @@
         <option name="charting.chart">column</option>
         <option name="charting.chart.overlayFields">EventCode</option>
         <option name="charting.drilldown">none</option>
+        <option name="height">179</option>
         <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
@@ -141,17 +172,33 @@
         <search base="base_lockout_events">
           <query>| search EventCode=4767 Account=$tkn_user$ | table _time user src_user EventCode  msad_action status "Event Name"</query>
         </search>
+        <option name="count">4</option>
         <option name="drilldown">cell</option>
       </table>
     </panel>
   </row>
   <row>
     <panel>
-      <title>AAA Failure (24407: Is required to change password 24408 Entered the wrong password 24415 Failed since user's account is locked out)</title>
+      <title>Wireless lockouts</title>
+      <table>
+        <search>
+          <query>index=ise sourcetype=cisco:acs   $tkn_user$   |  stats count as "ACS Events" by action MESSAGE_TEXT</query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="ACS Events">
+          <colorPalette type="minMidMax" maxColor="#53A051" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>ACS Failure (24407: Is required to change password 24408 Entered the wrong password 24415 Failed since user's account is locked out)</title>
       <table>
         <title>ACS</title>
         <search>
-          <query>index=wirelessauth (FailureReason=24415 OR FailureReason=24407 OR FailureReason=24408) AND UserName="Guest" OR UserName=*$tkn_user$* | stats count by FailureReason, MESSAGE_TEXT, UserName | sort - count</query>
+          <query>index=ise  (FailureReason=24415 OR FailureReason=24407 OR FailureReason=24408) AND UserName="Guest" OR UserName=*$tkn_user$* | stats count by FailureReason, MESSAGE_TEXT, UserName | sort - count</query>
           <earliest>$tkn_time.earliest$</earliest>
           <latest>$tkn_time.latest$</latest>
         </search>
@@ -163,24 +210,13 @@
         </format>
       </table>
     </panel>
-    <panel>
-      <table>
-        <title>Wireless lockouts</title>
-        <search>
-          <query>sourcetype=wireless  $tkn_user$   |  stats count as "ACS Events" by action MESSAGE_TEXT</query>
-          <earliest>-15m</earliest>
-          <latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
   </row>
   <row>
     <panel>
       <chart>
         <title>Logon Failures</title>
         <search>
-          <query>index=* sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) AND user=$tkn_user$
+          <query>index=wineventlog sourcetype=WinEventLog (EventCode=4625 OR EventCode=4771) AND user=$tkn_user$
 |  timechart count by "Event Name"</query>
           <earliest>$tkn_time.earliest$</earliest>
           <latest>$tkn_time.latest$</latest>
@@ -189,6 +225,191 @@
         <option name="charting.drilldown">none</option>
         <option name="refresh.display">progressbar</option>
       </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+        <h1>Windows Logon Map</h1>
+        <p style="color:grey">
+        Use the filters below to build a map of failed and/or successful user logons. Click on user or host name in the tables and pie chart below to filter logon information further.</p>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Windows Logon Map Filters</title>
+      <input type="text" token="user_filter">
+        <label>User Filter</label>
+        <default>$user_filter$</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="text" token="host_filter" searchWhenChanged="true">
+        <label>Host Filter/DC authenticating to</label>
+        <default>$host_filter$</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="min_hosts" searchWhenChanged="true">
+        <label>User Logon Attempts</label>
+        <default>1</default>
+        <initialValue>1</initialValue>
+        <choice value="1">against 1 host or more</choice>
+        <choice value="2">against 2 hosts or more</choice>
+        <choice value="3">against 3 hosts or more</choice>
+        <choice value="4">against 4 hosts or more</choice>
+        <choice value="5">against 5 hosts or more</choice>
+        <choice value="10">against 10 hosts or more</choice>
+        <choice value="50">against 50 hosts or more</choice>
+        <choice value="100">against 100 hosts or more</choice>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Users (with Filters Applied)</title>
+      <table>
+        <search base="base_lockout_events">
+          <query>| eval source&amp;destination=mvappend(Caller_Computer_Name,host) 
+| eventstats dc(source&amp;destination) AS host_count by user 
+| where host_count &gt;= $min_hosts$ 
+| stats first(host_count) AS hosts_authenticated by user 
+| sort - hosts_authenticated</query>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="hosts_authenticated">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <drilldown>
+          <set token="user_filter">$click.value$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <title>Source and Destination Hosts (with Filters Applied)</title>
+      <table>
+        <search base="base_lockout_events">
+          <query>| eval source&amp;destination=mvappend(Caller_Computer_Name,host) 
+| eventstats dc(source&amp;destination) AS host_count by user 
+| where host_count &gt;= $min_hosts$  
+| sort - count 
+| table source&amp;destination, count</query>
+        </search>
+        <option name="count">3</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#006D9C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <drilldown>
+          <set token="host_filter">$click.value2$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <title>Source and Destination Hosts (with Filters Applied)</title>
+      <chart>
+        <search base="base_lockout_events">
+          <query>| eval source&amp;destination=mvappend(Caller_Computer_Name,host) 
+| eventstats dc(source&amp;destination) AS host_count by user 
+| where host_count &gt;= $min_hosts$  
+| stats count by source&amp;destination</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.002</option>
+        <option name="charting.chart.stackMode">stacked100</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="height">206</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <drilldown>
+          <set token="host_filter">$click.value$</set>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Windows Logon Map (Map Shows up to 250 Logon Destinations)</title>
+      <viz type="force_directed_viz.force_directed">
+        <search base="base_lockout_events">
+          <query>| eval source&amp;destination=mvappend(Caller_Computer_Name,dest) 
+| eventstats dc(source&amp;destination) AS host_count by user 
+| where host_count &gt;= $min_hosts$ 
+| sort - host_count 
+| table source&amp;destination, user 
+| head 250</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="force_directed_viz.force_directed.AttractDistanceMax">600</option>
+        <option name="force_directed_viz.force_directed.AttractDistanceMin">60</option>
+        <option name="force_directed_viz.force_directed.AttractForceStrength">-300</option>
+        <option name="force_directed_viz.force_directed.CollisionIterations">1</option>
+        <option name="force_directed_viz.force_directed.CollisionRadius">20</option>
+        <option name="force_directed_viz.force_directed.CollisionStrength">0.7</option>
+        <option name="force_directed_viz.force_directed.ColorRange1">100</option>
+        <option name="force_directed_viz.force_directed.ColorRange1Code">#65a637</option>
+        <option name="force_directed_viz.force_directed.ColorRange2">500</option>
+        <option name="force_directed_viz.force_directed.ColorRange2Code">#6db7c6</option>
+        <option name="force_directed_viz.force_directed.ColorRange3">1000</option>
+        <option name="force_directed_viz.force_directed.ColorRange3Code">#f7bc38</option>
+        <option name="force_directed_viz.force_directed.ColorRange4">10000</option>
+        <option name="force_directed_viz.force_directed.ColorRange4Code">#f58f39</option>
+        <option name="force_directed_viz.force_directed.ColorRange5">1000000</option>
+        <option name="force_directed_viz.force_directed.ColorRange5Code">#d93f3c</option>
+        <option name="force_directed_viz.force_directed.ForceCollision">20</option>
+        <option name="force_directed_viz.force_directed.LineColor">disabled</option>
+        <option name="force_directed_viz.force_directed.LinkDistance">125</option>
+        <option name="force_directed_viz.force_directed.LinkLength">1</option>
+        <option name="force_directed_viz.force_directed.RepelDistanceMax">50</option>
+        <option name="force_directed_viz.force_directed.RepelDistanceMin">10</option>
+        <option name="force_directed_viz.force_directed.RepelForceStrength">-150</option>
+        <option name="force_directed_viz.force_directed.StrokeWidth">1</option>
+        <option name="force_directed_viz.force_directed.arrows">enabled</option>
+        <option name="force_directed_viz.force_directed.circleSize">5</option>
+        <option name="force_directed_viz.force_directed.panzoom">disabled</option>
+        <option name="force_directed_viz.force_directed.theme">dark</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
     </panel>
   </row>
 </form>
