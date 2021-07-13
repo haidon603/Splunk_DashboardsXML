@@ -1,0 +1,148 @@
+<form>
+  <label>PAN Overview</label>
+  <description>Simple dashboard created to query firewall logs.  
+Traffic Sources
+Traffic Destinations
+Traffic Ports
+Allowed
+Blocked
+Firewall Summary</description>
+  <search id="traffic_base_search">
+    <query>index=firewallIndex sourcetype=FirewallSource src=$tkn_src_ip$ dest=$tkn_dest_ip$ dest_port=$tkn_dest_port$ action=$tkn_action$ | fields _time, host, dvc_name, src, src_zone, dest, dest_zone, dest_port, action</query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+  </search>
+  <fieldset submitButton="true">
+    <input type="time" token="tkn_time" searchWhenChanged="true">
+      <label>Time</label>
+      <default>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="tkn_src_ip" searchWhenChanged="true">
+      <label>Source</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="tkn_dest_ip" searchWhenChanged="true">
+      <label>Destination</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="tkn_dest_port" searchWhenChanged="true">
+      <label>Destination Port</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="tkn_action" searchWhenChanged="true">
+      <label>Action</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <choice value="*">All</choice>
+      <fieldForLabel>action</fieldForLabel>
+      <fieldForValue>action</fieldForValue>
+      <search base="traffic_base_search">
+        <query>| stats count by action</query>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Traffic Sources</title>
+      <single>
+        <search base="traffic_base_search">
+          <query>| stats dc(src)</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Traffic Destinations</title>
+      <single>
+        <search base="traffic_base_search">
+          <query>| stats dc(dest)</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Traffic Ports</title>
+      <single>
+        <search base="traffic_base_search">
+          <query>| stats dc(dest_port)</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x555","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Allowed</title>
+      <single>
+        <search base="traffic_base_search">
+          <query>| search action=allowed | stats count</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x555","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Blocked</title>
+      <single>
+        <search base="traffic_base_search">
+          <query>| search action!=allowed | stats count</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x555","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>PAN Firewall Summary</title>
+      <table>
+        <search base="traffic_base_search">
+          <query>| table _time, host, dvc_name, action, src, src_zone, dest, dest_zone, dest_port 
+| sort _time desc</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>PAN Firewall Events</title>
+      <event>
+        <search>
+          <query>index=firewallIndex sourcetype=FirewallSource src=$tkn_src_ip$ dest=$tkn_dest_ip$ dest_port=$tkn_dest_port$ action=$tkn_action$</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+      </event>
+    </panel>
+  </row>
+</form>
