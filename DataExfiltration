@@ -164,7 +164,7 @@ https://zpettry.com/cybersecurity/splunk-queries-data-exfiltration/</description
       <table>
         <title>| stats sum(eval(bytes / 1000000)) as "MB" by body</title>
         <search>
-          <query>index=ava_ss_proxy sourcetype="mcafee:wg:kv" 
+          <query>index=proxy sourcetype="proxy"
 user=$user_token$
 | bucket _time span=1d
 | stats sum(eval(bytes / 1000000)) as "MB" by body 
@@ -194,7 +194,7 @@ user=$user_token$
       <title>14 days Users with a Sudden Increase in Sending Many DNS Requests. PAN:Traffic as Source The query below will output the user, the time, the source IP, the destination IP, the number of DNS requests, the number of data samples, the number of standard deviations away from the source's average of DNS requests per day, and the number of standard deviations away from the organization's average of DNS requests per day. It will show output when the number of DNS requests are 3 standard deviations above the source's or organization's average for the latest day compared with the latest 30 days.</title>
       <table>
         <search>
-          <query>index=ava_ss_firewall sourcetype="pan:traffic" dest_port=53 NOT user=unknown
+          <query>index=firewall sourcetype="firewallvendor" dest_port=53 NOT user=unknown
 |  bucket _time span=1d
 | stats count by user _time src_ip dest_ip
 | eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
@@ -228,7 +228,7 @@ user=$user_token$
       <title>7 days Cisco ASA Users with a Sudden Increase in Sending Many DNS Requests Source Type Cisco:ASA Lowercase'User'</title>
       <table>
         <search>
-          <query>index=ava_ns_vpn OR index=ava_ns_firewall sourcetype="cisco:asa" dest_port=53 
+          <query>index=vpn OR index=firewall sourcetype="cisco:asa" dest_port=53 
 | stats count by user, _time, src_ip, dest_ip, field2
 | eventstats max(_time) as maxtime avg(count) as avg_count stdev(count) as stdev_count | eventstats count as num_data_samples avg(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_avg_count stdev(eval(if(_time &lt; relative_time(maxtime, "@h"),count,null))) as per_source_stdev_count by src_ip  
 | where num_data_samples &gt;=4 AND count &gt; avg_count + 3 * stdev_count AND count &gt; per_source_avg_count + 3 * per_source_stdev_count AND _time &gt;= relative_time(maxtime, "@h")
@@ -288,7 +288,7 @@ user=$user_token$
       <title>Personal Network Storage by User (MBs)</title>
       <table>
         <search>
-          <query>| tstats summariesonly=true values(proxy_events.dhost) as "destination hosts" sum(proxy_events.bytes_out) as "downloaded" sum(proxy_events.bytes_in) as "uploaded" count as "event count" from datamodel=ava_dm_proxy where index=ava_ss_proxy proxy_events.user!="*$$" proxy_events.user!="*BYOD*" proxy_events.category="Personal Network Storage" by proxy_events.user
+          <query>| tstats summariesonly=true values(proxy_events.dhost) as "destination hosts" sum(proxy_events.bytes_out) as "downloaded" sum(proxy_events.bytes_in) as "uploaded" count as "event count" from datamodel=proxy where index=proxy proxy_events.user!="*$$" proxy_events.user!="*BYOD*" proxy_events.category="Personal Network Storage" by proxy_events.user
 | eval downloaded=round(downloaded/(1024*1024), 2)
 | eval uploaded=round(uploaded/(1024*1024), 2)
 | sort "uploaded" desc</query>
