@@ -1,6 +1,6 @@
 <form theme="dark">
   <label>Employee/Contractor Activity</label>
-  <description>We are frequently asked to provide evidence of employee/contractor work activity. EOI (emails, workstation, VPN, Citrix, Avigilon, Powerbrokers, Web (top apps, blocked categories, bytes). 719148</description>
+  <description>We are frequently asked to provide evidence of employee/contractor work activity. EOI (emails, workstation, VPN, Citrix, physical access, elevated privilege executions, Web history (top apps, blocked categories, bytes).</description>
   <search id="proxy_traffic">
     <query>index=proxy	 sourcetype="proxy" | fields _time,  app dhost action user body category  url  bytes_to_server bytes_to_client bytes time_total </query>
     <earliest>$tkn_time.earliest$</earliest>
