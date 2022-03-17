@@ -297,7 +297,7 @@ dhost!=socketio.hesapps.com
 | where (src!=prev_src)                
 | eval time_diff=abs(_time-prev_time)                      
 | where time_diff&lt;300                    
-| search user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Server_Network user!=BYOD_WCCP_Unauthenticated_User  user!=Guest_WCCP_Unauthenticated_User 
+| search user!=Internal  user!=BYOD  user!=Guest
 | table  user, dhost, src, _time, prev_src, prev_time, time_diff, count</query>
         </search>
         <option name="count">10</option>
