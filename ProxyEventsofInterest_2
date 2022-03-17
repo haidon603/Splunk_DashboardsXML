@@ -27,8 +27,7 @@
       <table>
         <search base="proxy_traffic">
           <query>| search action=blocked 
-user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User 
-user!=Guest_WCCP_Unauthenticated_User user!=BYOD_WCCP_Unauthenticated_User
+user!=Internal  user!=BYOD  user!=Guest
 dhost!=jelly.mdhv.io
 dhost!=cdn.ayc0zsm69431gfebd.xyz
 dhost!=cdn.czx5eyk0exbhwp43ya.biz
@@ -104,8 +103,7 @@ category= "Violence"
       <table>
         <search base="proxy_traffic">
           <query>| search action=blocked 
-user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User  user!=Internal_WCCP_Unauthenticated_User 
-user!=Guest_WCCP_Unauthenticated_User user!=BYOD_WCCP_Unauthenticated_User
+user!=Internal  user!=BYOD  user!=Guest
 dhost!=jelly.mdhv.io
 dhost!=cdn.ayc0zsm69431gfebd.xyz
 dhost!=cdn.czx5eyk0exbhwp43ya.biz
