@@ -1,0 +1,311 @@
+  #This dashboard looks for data exfiltration via email. It utilizes a base search to save on compute resources as well as an input lookup file (EmailVendor_data_exfil_whitelist.csv) to omit authorized accounts from populating the exfil panels.
+  
+  <form version="1.1">
+  <label>Potential Data Exfiltration via Email Base Search 2</label>
+  <description>Users sending emails 6x over their 30 day average |
+Large # of emails |
+Large attachments (total data size over time) |
+Large # of attachments over time |
+Top 20 Email Senders by Emails |
+Top 20 Emails Senders by Attachments Sent |
+Organization GB of email outbound by Day |
+Emails with Attachments by Sender Subject Recipient and Bytes
+Email Forwarding Rules</description>
+  <search id="base_email_events">
+    <query> index=EmailVendor  sourcetype="EmailVendorsiemst" Dir=Outbound Delivered=True 
+    | fields AttCnt, AttSize, Sender, recipient, subject, size
+ </query>
+    <earliest>$tkn_time.earliest$</earliest>
+    <latest>$tkn_time.latest$</latest>
+    <sampleRatio>1</sampleRatio>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="tkn_time" searchWhenChanged="false">
+      <label>Time</label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Organizationally Outbound emails by GB per day</title>
+      <chart>
+        <title>THIS PANEL DOES NOT USE THE SHARED TIME TOKEN FROM ABOVE</title>
+        <search base="base_email_events">
+          <query> |fields size | eval GB=((size/1024/1024)/1024)  
+| timechart sum(GB) | bucket _time span=1d
+</query>
+          <earliest>-14d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Top 20 users by total Attachment(s) size sent externally</title>
+      <viz type="sankey_diagram_app.sankey_diagram">
+        <search base="base_email_events">
+          <query>| rename Sender as src_user 
+| search NOT 
+    [| inputlookup append=t EmailVendor_data_exfil_whitelist.csv 
+    | fields src_user, src_user_bunit, recipient
+    | format 
+    | table search] | eval size=round(AttSize/1024/2024,2)
+| stats sum(size) as totalSize by src_user, recipient
+| sort - totalSize
+| head 20</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>New Email Forwarding Rules to External Accounts</title>
+      <table>
+        <title>:ogin to MCAS &gt; Search User &gt; Activity Log &gt; Query on &gt; Operation IN ("New-InboxRule",     "Set-InboxRule",     "Set-Mailbox",     "New-TransportRule",     "Set-TransportRule")</title>
+        <search>
+          <query>index IN (azure o365-audit o365) @gmail.com OR @aol.com OR @outlook.com OR @hotmail.com OR @sbcglobal.net OR @*cox.net OR .protonmail.c* OR @frontier.com OR yahoo.com OR @verizon.com OR @comcast.net OR @charter.com OR @spectrum.net OR @cableone.net OR @zoho.com OR @xfinity.com OR @att.com OR @centurylink.com OR @verizon.net OR @aol.com OR @suddenlink.com OR @sparklight.com OR @mediacom* OR @windstream* OR @wowway.com OR @wowway.net OR @optimum.net OR @earthlink.net OR @risebroadband.com OR @consolidated.com OR @tds.net OR @hughes.net OR @msn.com
+Operation IN ("New-InboxRule",     "Set-InboxRule",     "Set-Mailbox",     "New-TransportRule",     "Set-TransportRule")   | table   Operation Name  MoveToFolder user_id ForwardingSmtpAddress ForwardTo _time</query>
+          <earliest>$tkn_time.earliest$</earliest>
+          <latest>$tkn_time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="values(ForwardingSmtpAddress)">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="ForwardingSmtpAddress">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="user_id">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Operation">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top Talkers by Emails Sent</title>
+      <table>
+        <search base="base_email_events">
+          <query>| rename Sender as src_user 
+| `get_identity4events(src_user)` 
+| search NOT 
+    [| inputlookup append=t EmailVendor_data_exfil_whitelist.csv 
+    | fields src_user, src_user_bunit, recipient
+    | format 
+    | table search] | top 100 src_user</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="values(AttCnt)">
+          <colorPalette type="minMidMax" maxColor="#118832" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="values(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(AttCnt)">
+          <colorPalette type="minMidMax" maxColor="#118832" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#2EA39B" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Top Talkers by Attachment count in Email</title>
+      <table>
+        <search base="base_email_events">
+          <query>| rename Sender as src_user 
+| search NOT 
+    [| inputlookup append=t EmailVendor_data_exfil_whitelist.csv 
+    | fields src_user, src_user_bunit, recipient
+    | format 
+    | table search] | stats sum(AttCnt) as AttachmentCount by src_user  recipient subject
+| sort 40 -AttachmentCount</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="values(AttCnt)">
+          <colorPalette type="minMidMax" maxColor="#118832" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="values(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(AttCnt)">
+          <colorPalette type="minMidMax" maxColor="#118832" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="AttachmentCount">
+          <colorPalette type="minMidMax" maxColor="#88527D" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Emails sent Externally where attachment(s) &gt; 20 MB</title>
+      <table>
+        <search base="base_email_events">
+          <query>| rename Sender as src_user 
+| search NOT 
+    [| inputlookup append=t EmailVendor_data_exfil_whitelist.csv 
+    | fields src_user, src_user_bunit, recipient
+    | format 
+    | table search] | eval megabytes=((AttSize/1024)/1024)  
+| search  megabytes &gt; 20
+| rename megabytes as "MB by Attachment"
+| eval user = src_user . " - " . src_user_bunit
+| stats values(recipient) values(subject) values(AttCnt) values(MB by Attachment)  by user 
+| rename values* AS *
+|  sort-("MB by Attachment")</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="values(AttCnt)">
+          <colorPalette type="minMidMax" maxColor="#118832" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="values(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(Attachment(s) in Megabytes)">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="AttachmentCount">
+          <colorPalette type="minMidMax" maxColor="#2EA39B" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="(MB by Attachment)">
+          <colorPalette type="minMidMax" maxColor="#88527D" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Users sending emails 6x over their 30 day average</title>
+      <table>
+        <title>THIS PANEL DOES NOT USE THE SHARED TIME TOKEN FROM ABOVE - you will need to open as new search to change timeframe from the default 30 days</title>
+        <search>
+          <query>index=EmailVendor Dir=Outbound Delivered=True
+| rename Sender as src_user 
+| search NOT 
+    [| inputlookup append=t EmailVendor_data_exfil_whitelist.csv 
+    | fields src_user, src_user_bunit, src_user_suffix, recipient
+    | format 
+    | table search]
+| bucket _time span=1d
+| stats count by src_user, _time
+| eval maxtime=now() | stats count as num_data_samples max(eval(if(_time &gt;= relative_time(maxtime, "-1d@h"), 'count',null))) as "count" avg(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as avg stdev(eval(if(_time&lt;relative_time(maxtime,"-1d@h"),'count',null))) as stdev by "src_user"
+| eval lowerBound=(avg-stdev*6), upperBound=(avg+stdev*6)
+| eval isOutlier=if(('count' &lt; lowerBound OR 'count' &gt; upperBound) AND num_data_samples &gt;=7, 1, 0) | where isOutlier=1 AND count&gt;10 AND count&gt;upperBound | table src_user, num_data_samples, count, avg, stdev, upperBound 
+| sort -stdev</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">15</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="stdev">
+          <colorPalette type="minMidMax" maxColor="#1182F3" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D41F1F" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
