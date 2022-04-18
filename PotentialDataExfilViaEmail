@@ -1,4 +1,6 @@
-  #This dashboard looks for data exfiltration via email. It utilizes a base search to save on compute resources as well as an input lookup file (EmailVendor_data_exfil_whitelist.csv) to omit authorized accounts from populating the exfil panels. Dashboard only looks at nort south traffic and not internal east west. 
+```This dashboard looks for data exfiltration via email. It utilizes a base search to save on compute, a time token to adjust as needed, as well as an input lookup file(EmailVendor_data_exfil_whitelist.csv) to omit authorized accounts from populating the exfil panels. For our environment, we also added an identity macro which allowed us to append a user's business unit to their email addresses and quickly identify users authorized to send attachments externally such as users in HR. This saves our analysts time from having to go take a user and input it into AD to retrieve department info. Dashboard only looks at nort south traffic and not internal east west. Lastly, the dashboard does not run without selecting "submit" so that the time can be adjusted before the queries execute. 
+
+Users sending emails 6x over their 30-day average, Large # of emails, Large attachments (total data size over time), Large # of attachments over time, Top 20 Email Senders by Emails, Top 20 Emails Senders by Attachments Sent, Organization GB of email outbound by Day, Emails with Attachments by Sender Subject Recipient and Bytes, Email Forwarding Rules ```
   
   <form version="1.1">
   <label>Potential Data Exfiltration via Email Base Search 2</label>
