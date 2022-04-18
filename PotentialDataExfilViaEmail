@@ -1,4 +1,4 @@
-  #This dashboard looks for data exfiltration via email. It utilizes a base search to save on compute resources as well as an input lookup file (EmailVendor_data_exfil_whitelist.csv) to omit authorized accounts from populating the exfil panels.
+  #This dashboard looks for data exfiltration via email. It utilizes a base search to save on compute resources as well as an input lookup file (EmailVendor_data_exfil_whitelist.csv) to omit authorized accounts from populating the exfil panels. Dashboard only looks at nort south traffic and not internal east west. 
   
   <form version="1.1">
   <label>Potential Data Exfiltration via Email Base Search 2</label>
