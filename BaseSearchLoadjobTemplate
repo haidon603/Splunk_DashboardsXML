@@ -1,0 +1,67 @@
+<form>
+  <label>base search test</label>
+  <search id="basesearch">
+    <!--Create your base search here or searches here.  The goal is to only have our dataset(s) searched once. In this case, we are using vpn logs, but consider windows event logs, firewall logs, etc. where an analyst would expect to run the same base search over and over but extract different pieces. For example, in our VPN logs, we're regularly querying the vpn index for geographic info, vpn success info, and top source locations. Rather than have 3 different searches run every time we load the dashboard- we are utilizing one search and then pulling fields as needed in our panels.-->
+    <query>    (index="vpn1" OR (index=vpn2 tag=vpn) OR index="vpn3") $input_field$ | fields user action msg  _time src_ip assigned_ip 
+</query>
+    <earliest>$time.earliest$</earliest>
+    <latest>$time.latest$</latest>
+    <done>
+      <!--The token "search1" will be refenced in the below panels-->
+      <set token="search1">$job.sid$</set>
+      <unset token="running"></unset>
+    </done>
+  </search>
+  <fieldset submitButton="true">
+    <input type="text" token="input_field" searchWhenChanged="false">
+      <label>IP, MAC, Host Name, User Name, or Employee ID</label>
+      <default></default>
+    </input>
+          <!--The token "time" will be refenced the panels-->
+    <input type="time" token="time">
+      <label>Time picker</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Top VPN source locations</title>
+      <table depends="$search1$">
+        <search>
+          <query>| loadjob $search1$ | iplocation src_ip 
+| top Country Region</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <title>VPN connections by geography on a map</title>
+      <map depends="$search1$">
+        <search>
+          <query>| loadjob $search1$ | iplocation src_ip | geostats count by City</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="mapping.type">marker</option>
+      </map>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>VPN connection details</title>
+      <table depends="$search1$">
+        <search>
+          <query>| loadjob $search1$ | iplocation src_ip | table  user action msg  _time src_ip assigned_ip | sort -_time</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
